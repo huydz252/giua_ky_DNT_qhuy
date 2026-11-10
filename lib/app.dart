@@ -1,13 +1,19 @@
 import 'package:flutter/material.dart';
 
+import 'domain/repositories/base_repository.dart';
 import 'domain/repositories/auth_repository.dart';
 import 'presentation/pages/dashboard_page.dart';
 import 'presentation/pages/login_page.dart';
 
 class CrudTemplateApp extends StatelessWidget {
-  const CrudTemplateApp({required this.authRepository, super.key});
+  const CrudTemplateApp({
+    required this.authRepository,
+    required this.studentRepository,
+    super.key,
+  });
 
   final AuthRepository authRepository;
+  final BaseRepository studentRepository;
 
   @override
   Widget build(BuildContext context) {
@@ -17,16 +23,24 @@ class CrudTemplateApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
         useMaterial3: true,
       ),
-      home: AuthGate(authRepository: authRepository),
+      home: AuthGate(
+        authRepository: authRepository,
+        studentRepository: studentRepository,
+      ),
     );
   }
 }
 
 /// Checks the session on app launch and switches between auth destinations.
 class AuthGate extends StatefulWidget {
-  const AuthGate({required this.authRepository, super.key});
+  const AuthGate({
+    required this.authRepository,
+    required this.studentRepository,
+    super.key,
+  });
 
   final AuthRepository authRepository;
+  final BaseRepository studentRepository;
 
   @override
   State<AuthGate> createState() => _AuthGateState();
@@ -105,6 +119,7 @@ class _AuthGateState extends State<AuthGate> {
     if (_isLoggedIn) {
       return DashboardPage(
         authRepository: widget.authRepository,
+        studentRepository: widget.studentRepository,
         onLoggedOut: _handleLogout,
       );
     }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:giua_ky/app.dart';
+import 'package:giua_ky/data/providers/database_provider.dart';
 import 'package:giua_ky/data/repositories/mock_auth_repository.dart';
 import 'package:giua_ky/domain/repositories/auth_repository.dart';
 import 'package:giua_ky/presentation/pages/login_page.dart';
@@ -10,6 +11,7 @@ void main() {
     await tester.pumpWidget(
       CrudTemplateApp(
         authRepository: MockAuthRepository(simulatedDelay: Duration.zero),
+        studentRepository: DatabaseProvider.studentRepository,
       ),
     );
     await tester.pumpAndSettle();
@@ -24,6 +26,7 @@ void main() {
     await tester.pumpWidget(
       CrudTemplateApp(
         authRepository: MockAuthRepository(simulatedDelay: Duration.zero),
+        studentRepository: DatabaseProvider.studentRepository,
       ),
     );
     await tester.pumpAndSettle();
@@ -46,7 +49,10 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(
-      CrudTemplateApp(authRepository: MockAuthRepository()),
+      CrudTemplateApp(
+        authRepository: MockAuthRepository(),
+        studentRepository: DatabaseProvider.studentRepository,
+      ),
     );
     await tester.pumpAndSettle();
 
@@ -68,7 +74,12 @@ void main() {
     final repository = MockAuthRepository(simulatedDelay: Duration.zero);
     await repository.login('admin', '123456');
 
-    await tester.pumpWidget(CrudTemplateApp(authRepository: repository));
+    await tester.pumpWidget(
+      CrudTemplateApp(
+        authRepository: repository,
+        studentRepository: DatabaseProvider.studentRepository,
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('dashboardGreeting')), findsOneWidget);
@@ -79,6 +90,7 @@ void main() {
     await tester.pumpWidget(
       CrudTemplateApp(
         authRepository: MockAuthRepository(simulatedDelay: Duration.zero),
+        studentRepository: DatabaseProvider.studentRepository,
       ),
     );
     await tester.pumpAndSettle();
