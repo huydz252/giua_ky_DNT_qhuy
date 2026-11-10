@@ -44,11 +44,11 @@ class _StudentDetailPageState extends State<StudentDetailPage> {
       context,
       studentName: _student.name,
     );
-    if (!confirmed) return;
+    if (!mounted || !confirmed) return;
 
     try {
       await widget.repository.deleteItem(_student.id);
-      if (mounted) Navigator.of(context).pop();
+      if (mounted) Navigator.of(context).pop(true);
     } catch (_) {
       if (mounted) setState(() => _errorMessage = 'Không thể xóa sinh viên.');
     }

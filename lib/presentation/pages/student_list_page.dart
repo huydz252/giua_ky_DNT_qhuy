@@ -67,7 +67,7 @@ class _StudentListPageState extends State<StudentListPage> {
       context,
       studentName: student.name,
     );
-    if (!confirmed) return;
+    if (!mounted || !confirmed) return;
 
     try {
       await widget.repository.deleteItem(student.id);
@@ -77,13 +77,15 @@ class _StudentListPageState extends State<StudentListPage> {
     }
   }
 
-  void _openDetails(Student student) {
-    Navigator.of(context).push<void>(
-      MaterialPageRoute<void>(
+  Future<void> _openDetails(Student student) async {
+    final wasDeleted = await Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(
         builder: (_) =>
             StudentDetailPage(student: student, repository: widget.repository),
       ),
     );
+    if (!mounted) return;
+    if (wasDeleted ?? false) _showMessage('Sinh viên đã được xóa.');
   }
 
   void _showMessage(String message) {
@@ -92,18 +94,20 @@ class _StudentListPageState extends State<StudentListPage> {
       ..showSnackBar(SnackBar(content: Text(message)));
   }
 
-  List<Student> _filterStudents(List<Student> students) {
-    final keyword = _searchController.text.trim().toLowerCase();
-    if (keyword.isEmpty) return students;
-
-    return students
-        .where((student) {
-          return student.studentCode.toLowerCase().contains(keyword) ||
-              student.name.toLowerCase().contains(keyword) ||
-              student.className.toLowerCase().contains(keyword) ||
-              student.email.toLowerCase().contains(keyword);
-        })
-        .toList(growable: false);
+  Widget _buildStudentCards(List<Student> students) {
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(12, 4, 12, 88),
+      itemCount: students.length,
+      itemBuilder: (context, index) {
+        final student = students[index];
+        return StudentCard(
+          student: student,
+          onTap: () => _openDetails(student),
+          onEdit: () => _editStudent(student),
+          onDelete: () => _deleteStudent(student),
+        );
+      },
+    );
   }
 
   @override
@@ -150,34 +154,38 @@ class _StudentListPageState extends State<StudentListPage> {
                 if (!snapshot.hasData) return const LoadingWidget();
 
                 final students = snapshot.data!;
-                if (students.isEmpty) {
+                final keyword = _searchController.text.trim();
+                if (keyword.isEmpty && students.isEmpty) {
                   return EmptyWidget(
                     message: 'Chưa có sinh viên nào.',
                     actionLabel: 'Thêm sinh viên',
                     onAction: _addStudent,
                   );
                 }
-
-                final visibleStudents = _filterStudents(students);
-                if (visibleStudents.isEmpty) {
-                  return const EmptyWidget(
-                    message: 'Không tìm thấy sinh viên phù hợp.',
+                if (keyword.isNotEmpty) {
+                  return FutureBuilder<List<Student>>(
+                    future: widget.repository.searchItems(keyword),
+                    builder: (context, searchSnapshot) {
+                      if (searchSnapshot.hasError) {
+                        return app_widgets.ErrorWidget(
+                          message: 'Không thể tìm kiếm sinh viên.',
+                          onRetry: () => setState(() {}),
+                        );
+                      }
+                      if (!searchSnapshot.hasData) {
+                        return const LoadingWidget(message: 'Đang tìm kiếm...');
+                      }
+                      final matchingStudents = searchSnapshot.data!;
+                      if (matchingStudents.isEmpty) {
+                        return const EmptyWidget(
+                          message: 'Không tìm thấy sinh viên phù hợp.',
+                        );
+                      }
+                      return _buildStudentCards(matchingStudents);
+                    },
                   );
                 }
-
-                return ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(12, 4, 12, 88),
-                  itemCount: visibleStudents.length,
-                  itemBuilder: (context, index) {
-                    final student = visibleStudents[index];
-                    return StudentCard(
-                      student: student,
-                      onTap: () => _openDetails(student),
-                      onEdit: () => _editStudent(student),
-                      onDelete: () => _deleteStudent(student),
-                    );
-                  },
-                );
+                return _buildStudentCards(students);
               },
             ),
           ),
