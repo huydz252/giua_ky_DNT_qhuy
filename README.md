@@ -1,6 +1,6 @@
 # Ung dung quan ly san pham
 
-Flutter app theo de thi giua ky: admin dang nhap bang Firebase Authentication, CRUD san pham tren Cloud Firestore, luu anh tren Supabase Storage.
+Flutter app quan li san pham: admin dang nhap bang Firebase Authentication, CRUD san pham tren Cloud Firestore, luu anh tren Supabase Storage.
 
 ## Chay Web
 
