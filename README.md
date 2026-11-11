@@ -1,17 +1,23 @@
-# giua_ky
+# Ung dung quan ly san pham
 
-A new Flutter project.
+Flutter app theo de thi giua ky: admin dang nhap bang Firebase Authentication, CRUD san pham tren Cloud Firestore, luu anh tren Supabase Storage.
 
-## Getting Started
+## Chay Web
 
-This project is a starting point for a Flutter application.
+```powershell
+flutter pub get
+flutter run -d chrome
+```
 
-A few resources to get you started if this is your first Flutter project:
+## Chay Android
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+```powershell
+flutter devices
+flutter run -d <device-id>
+```
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Firestore collection `products` chi luu cac field `name`, `price`, `soluong`, `image`. ID nam o document ID, khong phai field thu nam. Supabase bucket la `images`.
+
+Xem [EXAM_BACKEND_SETUP.md](EXAM_BACKEND_SETUP.md) de cai dat backend, [EXAM_GUIDE.md](EXAM_GUIDE.md) de xem cau truc project va [REPORT.md](REPORT.md) de hoan thien bao cao nop bai.
+
+Supabase URL/publishable key mac dinh duoc khai bao trong `lib/data/providers/supabase_image_storage.dart`, nen co the Run tu IDE. `supabase.local.json` (Git ignore) chi can neu muon override gia tri mac dinh. Publishable key la public client key; khong dung service-role key trong app.

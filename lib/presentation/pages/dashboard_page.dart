@@ -1,230 +1,147 @@
 import 'package:flutter/material.dart';
 
-import '../../domain/models/student.dart';
+import '../../data/providers/supabase_image_storage.dart';
+import '../../domain/models/product.dart';
 import '../../domain/repositories/auth_repository.dart';
-import '../../domain/repositories/base_repository.dart';
-import '../widgets/error_widget.dart' as app_widgets;
-import '../widgets/loading_widget.dart';
-import 'student_list_page.dart';
+import '../../domain/repositories/product_repository.dart';
+import 'product_list_page.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({
     required this.authRepository,
-    required this.studentRepository,
-    required this.onLoggedOut,
+    required this.productRepository,
+    required this.storage,
+    required this.onLogout,
     super.key,
   });
 
   final AuthRepository authRepository;
-  final BaseRepository studentRepository;
-  final VoidCallback onLoggedOut;
+  final ProductRepository productRepository;
+  final SupabaseImageStorage? storage;
+  final VoidCallback onLogout;
 
   @override
   State<DashboardPage> createState() => _DashboardPageState();
 }
 
 class _DashboardPageState extends State<DashboardPage> {
-  bool _isLoggingOut = false;
-  String? _logoutError;
-  late Stream<List<Student>> _studentsStream;
-
-  @override
-  void initState() {
-    super.initState();
-    _studentsStream = widget.studentRepository.watchItems();
-  }
-
-  @override
-  void didUpdateWidget(covariant DashboardPage oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (!identical(oldWidget.studentRepository, widget.studentRepository)) {
-      _studentsStream = widget.studentRepository.watchItems();
-    }
-  }
+  bool _loggingOut = false;
+  String? _error;
 
   Future<void> _logout() async {
-    if (_isLoggingOut) return;
     setState(() {
-      _isLoggingOut = true;
-      _logoutError = null;
+      _loggingOut = true;
+      _error = null;
     });
-
     try {
       await widget.authRepository.logout();
-      if (!mounted) return;
-      widget.onLoggedOut();
+      if (mounted) widget.onLogout();
     } catch (_) {
-      if (!mounted) return;
-      setState(() => _logoutError = 'Không thể đăng xuất. Vui lòng thử lại.');
+      if (mounted) setState(() => _error = 'Không thể đăng xuất.');
     } finally {
-      if (mounted) setState(() => _isLoggingOut = false);
+      if (mounted) setState(() => _loggingOut = false);
     }
   }
 
-  void _openStudentList() {
-    Navigator.of(context).push<void>(
-      MaterialPageRoute<void>(
-        builder: (_) => StudentListPage(repository: widget.studentRepository),
+  void _openProducts() => Navigator.of(context).push<void>(
+    MaterialPageRoute(
+      builder: (_) => ProductListPage(
+        repository: widget.productRepository,
+        storage: widget.storage,
       ),
-    );
-  }
+    ),
+  );
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Dashboard'),
-        actions: [
-          TextButton.icon(
-            key: const Key('logoutButton'),
-            onPressed: _isLoggingOut ? null : _logout,
-            icon: _isLoggingOut
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.logout),
-            label: const Text('Đăng xuất'),
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          Text(
-            'Xin chào, admin',
-            key: const Key('dashboardGreeting'),
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Tổng quan quản lý sinh viên',
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
-          if (_logoutError != null) ...[
-            const SizedBox(height: 12),
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(
+      title: const Text('Quản trị sản phẩm'),
+      actions: [
+        TextButton.icon(
+          onPressed: _loggingOut ? null : _logout,
+          icon: const Icon(Icons.logout),
+          label: const Text('Đăng xuất'),
+        ),
+      ],
+    ),
+    body: Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 760),
+        child: ListView(
+          padding: const EdgeInsets.all(24),
+          children: [
             Text(
-              _logoutError!,
-              key: const Key('logoutErrorMessage'),
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
+              'Xin chào, quản trị viên',
+              style: Theme.of(context).textTheme.headlineMedium,
             ),
-          ],
-          const SizedBox(height: 20),
-          StreamBuilder<List<Student>>(
-            stream: _studentsStream,
-            builder: (context, snapshot) {
-              if (snapshot.hasError) {
-                return app_widgets.ErrorWidget(
-                  message: 'Không thể tải thống kê sinh viên.',
-                  onRetry: () => setState(
-                    () =>
-                        _studentsStream = widget.studentRepository.watchItems(),
+            const SizedBox(height: 8),
+            const Text('Quản lý tên, giá, số lượng và hình ảnh sản phẩm.'),
+            if (_error != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  _error!,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+              ),
+            const SizedBox(height: 24),
+            StreamBuilder<List<Product>>(
+              stream: widget.productRepository.watchProducts(),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Text(
+                        'Không đọc được Firestore. Kiểm tra collection products và Rules.\n${snapshot.error}',
+                      ),
+                    ),
+                  );
+                }
+                if (!snapshot.hasData) {
+                  return const Card(
+                    child: SizedBox(
+                      height: 110,
+                      child: Center(child: CircularProgressIndicator()),
+                    ),
+                  );
+                }
+                return Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.inventory_2_outlined, size: 32),
+                    title: const Text('Sản phẩm trong hệ thống'),
+                    subtitle: Text('${snapshot.data!.length} sản phẩm'),
+                    trailing: const Icon(Icons.arrow_forward),
+                    onTap: _openProducts,
                   ),
                 );
-              }
-              if (!snapshot.hasData) {
-                return const SizedBox(
-                  height: 160,
-                  child: LoadingWidget(message: 'Đang tải thống kê...'),
-                );
-              }
-
-              final students = snapshot.data!;
-              final classCount = students
-                  .map((student) => student.className)
-                  .where((className) => className.isNotEmpty)
-                  .toSet()
-                  .length;
-              final averageScore = students.isEmpty
-                  ? 0.0
-                  : students
-                            .map((student) => student.averageScore)
-                            .reduce((total, score) => total + score) /
-                        students.length;
-
-              return LayoutBuilder(
-                builder: (context, constraints) {
-                  final columns = constraints.maxWidth >= 600 ? 3 : 1;
-                  return GridView.count(
-                    key: const Key('dashboardStatistics'),
-                    crossAxisCount: columns,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    mainAxisSpacing: 12,
-                    crossAxisSpacing: 12,
-                    childAspectRatio: columns == 1 ? 3.6 : 1.6,
-                    children: [
-                      _StatisticCard(
-                        label: 'Tổng sinh viên',
-                        value: students.length.toString(),
-                        icon: Icons.people_outline,
-                      ),
-                      _StatisticCard(
-                        label: 'Số lớp',
-                        value: classCount.toString(),
-                        icon: Icons.class_outlined,
-                      ),
-                      _StatisticCard(
-                        label: 'Điểm trung bình',
-                        value: averageScore.toStringAsFixed(1),
-                        icon: Icons.grade_outlined,
-                      ),
-                    ],
-                  );
-                },
-              );
-            },
-          ),
-          const SizedBox(height: 24),
-          FilledButton.icon(
-            key: const Key('openStudentListButton'),
-            onPressed: _openStudentList,
-            icon: const Icon(Icons.groups_outlined),
-            label: const Text('Danh sách sinh viên'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StatisticCard extends StatelessWidget {
-  const _StatisticCard({
-    required this.label,
-    required this.value,
-    required this.icon,
-  });
-
-  final String label;
-  final String value;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Icon(icon, size: 32, color: Theme.of(context).colorScheme.primary),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(label, style: Theme.of(context).textTheme.bodyMedium),
-                  Text(value, style: Theme.of(context).textTheme.titleLarge),
-                ],
+              },
+            ),
+            const SizedBox(height: 16),
+            Card(
+              child: ListTile(
+                leading: Icon(
+                  widget.storage == null
+                      ? Icons.cloud_off_outlined
+                      : Icons.cloud_done_outlined,
+                ),
+                title: const Text('Lưu trữ hình ảnh'),
+                subtitle: Text(
+                  widget.storage == null
+                      ? 'Chưa nạp cấu hình Supabase'
+                      : 'Bucket Supabase: images',
+                ),
               ),
+            ),
+            const SizedBox(height: 24),
+            FilledButton.icon(
+              onPressed: _openProducts,
+              icon: const Icon(Icons.inventory_outlined),
+              label: const Text('Mở danh sách sản phẩm'),
             ),
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
 }

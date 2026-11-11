@@ -1,0 +1,8 @@
+[
+  {
+    "name": "San pham mau",
+    "price": 125000,
+    "soluong": 8,
+    "image": "https://YOUR_PROJECT.supabase.co/storage/v1/object/public/images/YOUR_UPLOADED_IMAGE"
+  }
+]

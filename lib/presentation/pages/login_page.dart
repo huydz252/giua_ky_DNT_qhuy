@@ -5,12 +5,11 @@ import '../../domain/repositories/auth_repository.dart';
 class LoginPage extends StatefulWidget {
   const LoginPage({
     required this.authRepository,
-    required this.onLoginSuccess,
+    required this.onSuccess,
     super.key,
   });
-
   final AuthRepository authRepository;
-  final VoidCallback onLoginSuccess;
+  final VoidCallback onSuccess;
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -18,145 +17,111 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
-  final _usernameController = TextEditingController();
-  final _passwordController = TextEditingController();
-
-  bool _isLoading = false;
-  bool _obscurePassword = true;
-  String? _errorMessage;
+  final _email = TextEditingController();
+  final _password = TextEditingController();
+  bool _loading = false;
+  String? _error;
 
   @override
   void dispose() {
-    _usernameController.dispose();
-    _passwordController.dispose();
+    _email.dispose();
+    _password.dispose();
     super.dispose();
   }
 
-  Future<void> _submit() async {
-    if (_isLoading || !_formKey.currentState!.validate()) return;
-
+  Future<void> _login() async {
+    if (_loading || !_formKey.currentState!.validate()) return;
     setState(() {
-      _isLoading = true;
-      _errorMessage = null;
+      _loading = true;
+      _error = null;
     });
-
     try {
       final success = await widget.authRepository.login(
-        _usernameController.text.trim(),
-        _passwordController.text,
+        _email.text.trim(),
+        _password.text,
       );
       if (!mounted) return;
-
       if (success) {
-        widget.onLoginSuccess();
+        widget.onSuccess();
       } else {
-        setState(() => _errorMessage = 'Sai tên đăng nhập hoặc mật khẩu.');
+        setState(() => _error = 'Email hoặc mật khẩu không đúng.');
       }
     } catch (_) {
-      if (!mounted) return;
-      setState(
-        () => _errorMessage = 'Đăng nhập không thành công. Vui lòng thử lại.',
-      );
+      if (mounted) {
+        setState(
+          () =>
+              _error = 'Đăng nhập thất bại. Kiểm tra Firebase Authentication.',
+        );
+      }
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
 
   @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-
-    return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.school, size: 48, color: colors.primary),
-                        const SizedBox(height: 16),
+  Widget build(BuildContext context) => Scaffold(
+    body: SafeArea(
+      child: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.admin_panel_settings_outlined, size: 48),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Đăng nhập quản trị',
+                        style: Theme.of(context).textTheme.headlineSmall,
+                      ),
+                      const SizedBox(height: 20),
+                      TextFormField(
+                        controller: _email,
+                        keyboardType: TextInputType.emailAddress,
+                        decoration: const InputDecoration(
+                          labelText: 'Email quản trị',
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (value) =>
+                            value == null || !value.contains('@')
+                            ? 'Nhập email hợp lệ.'
+                            : null,
+                      ),
+                      const SizedBox(height: 14),
+                      TextFormField(
+                        controller: _password,
+                        obscureText: true,
+                        onFieldSubmitted: (_) => _login(),
+                        decoration: const InputDecoration(
+                          labelText: 'Mật khẩu',
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (value) => value == null || value.isEmpty
+                            ? 'Nhập mật khẩu.'
+                            : null,
+                      ),
+                      if (_error != null) ...[
+                        const SizedBox(height: 12),
                         Text(
-                          'Đăng nhập',
-                          textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.headlineSmall,
-                        ),
-                        const SizedBox(height: 24),
-                        TextFormField(
-                          key: const Key('usernameField'),
-                          controller: _usernameController,
-                          textInputAction: TextInputAction.next,
-                          autofillHints: const [AutofillHints.username],
-                          decoration: const InputDecoration(
-                            labelText: 'Tên đăng nhập',
-                            prefixIcon: Icon(Icons.person_outline),
-                            border: OutlineInputBorder(),
+                          _error!,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
                           ),
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'Vui lòng nhập tên đăng nhập.';
-                            }
-                            return null;
-                          },
-                          onChanged: (_) => _clearError(),
                         ),
-                        const SizedBox(height: 16),
-                        TextFormField(
-                          key: const Key('passwordField'),
-                          controller: _passwordController,
-                          obscureText: _obscurePassword,
-                          autofillHints: const [AutofillHints.password],
-                          onFieldSubmitted: (_) => _submit(),
-                          decoration: InputDecoration(
-                            labelText: 'Mật khẩu',
-                            prefixIcon: const Icon(Icons.lock_outline),
-                            border: const OutlineInputBorder(),
-                            suffixIcon: IconButton(
-                              tooltip: _obscurePassword
-                                  ? 'Hiện mật khẩu'
-                                  : 'Ẩn mật khẩu',
-                              onPressed: () => setState(
-                                () => _obscurePassword = !_obscurePassword,
-                              ),
-                              icon: Icon(
-                                _obscurePassword
-                                    ? Icons.visibility_outlined
-                                    : Icons.visibility_off_outlined,
-                              ),
-                            ),
-                          ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Vui lòng nhập mật khẩu.';
-                            }
-                            return null;
-                          },
-                          onChanged: (_) => _clearError(),
-                        ),
-                        if (_errorMessage != null) ...[
-                          const SizedBox(height: 12),
-                          Text(
-                            _errorMessage!,
-                            key: const Key('loginErrorMessage'),
-                            style: TextStyle(color: colors.error),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                        const SizedBox(height: 24),
-                        FilledButton(
-                          key: const Key('loginButton'),
-                          onPressed: _isLoading ? null : _submit,
-                          child: _isLoading
+                      ],
+                      const SizedBox(height: 20),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton(
+                          onPressed: _loading ? null : _login,
+                          child: _loading
                               ? const SizedBox(
-                                  key: Key('loginLoadingIndicator'),
                                   width: 20,
                                   height: 20,
                                   child: CircularProgressIndicator(
@@ -165,14 +130,8 @@ class _LoginPageState extends State<LoginPage> {
                                 )
                               : const Text('Đăng nhập'),
                         ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Tài khoản thử nghiệm: admin / 123456',
-                          textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -180,10 +139,6 @@ class _LoginPageState extends State<LoginPage> {
           ),
         ),
       ),
-    );
-  }
-
-  void _clearError() {
-    if (_errorMessage != null) setState(() => _errorMessage = null);
-  }
+    ),
+  );
 }

@@ -1,55 +1,56 @@
 import 'package:flutter/material.dart';
 
-import 'domain/repositories/base_repository.dart';
+import 'data/providers/supabase_image_storage.dart';
 import 'domain/repositories/auth_repository.dart';
+import 'domain/repositories/product_repository.dart';
 import 'presentation/pages/dashboard_page.dart';
 import 'presentation/pages/login_page.dart';
 
-class CrudTemplateApp extends StatelessWidget {
-  const CrudTemplateApp({
+class ProductAdminApp extends StatelessWidget {
+  const ProductAdminApp({
     required this.authRepository,
-    required this.studentRepository,
+    required this.productRepository,
+    required this.storage,
     super.key,
   });
 
   final AuthRepository authRepository;
-  final BaseRepository studentRepository;
+  final ProductRepository productRepository;
+  final SupabaseImageStorage? storage;
 
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter CRUD Template',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
-        useMaterial3: true,
-      ),
-      home: AuthGate(
-        authRepository: authRepository,
-        studentRepository: studentRepository,
-      ),
-    );
-  }
+  Widget build(BuildContext context) => MaterialApp(
+    title: 'Quản lý sản phẩm',
+    theme: ThemeData(
+      colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
+      useMaterial3: true,
+    ),
+    home: _AuthGate(
+      authRepository: authRepository,
+      productRepository: productRepository,
+      storage: storage,
+    ),
+  );
 }
 
-/// Checks the session on app launch and switches between auth destinations.
-class AuthGate extends StatefulWidget {
-  const AuthGate({
+class _AuthGate extends StatefulWidget {
+  const _AuthGate({
     required this.authRepository,
-    required this.studentRepository,
-    super.key,
+    required this.productRepository,
+    required this.storage,
   });
 
   final AuthRepository authRepository;
-  final BaseRepository studentRepository;
+  final ProductRepository productRepository;
+  final SupabaseImageStorage? storage;
 
   @override
-  State<AuthGate> createState() => _AuthGateState();
+  State<_AuthGate> createState() => _AuthGateState();
 }
 
-class _AuthGateState extends State<AuthGate> {
-  bool _isCheckingSession = true;
-  bool _isLoggedIn = false;
-  Object? _sessionError;
+class _AuthGateState extends State<_AuthGate> {
+  bool? _loggedIn;
+  String? _error;
 
   @override
   void initState() {
@@ -58,75 +59,48 @@ class _AuthGateState extends State<AuthGate> {
   }
 
   Future<void> _checkSession() async {
-    setState(() {
-      _isCheckingSession = true;
-      _sessionError = null;
-    });
-
     try {
-      final isLoggedIn = await widget.authRepository.isLoggedIn();
-      if (!mounted) return;
-      setState(() {
-        _isLoggedIn = isLoggedIn;
-        _isCheckingSession = false;
-      });
+      final loggedIn = await widget.authRepository.isLoggedIn();
+      if (mounted) setState(() => _loggedIn = loggedIn);
     } catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _sessionError = error;
-        _isCheckingSession = false;
-      });
+      if (mounted) {
+        setState(() {
+          _error = error.toString();
+          _loggedIn = false;
+        });
+      }
     }
-  }
-
-  void _handleLoginSuccess() {
-    setState(() => _isLoggedIn = true);
-  }
-
-  void _handleLogout() {
-    setState(() => _isLoggedIn = false);
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isCheckingSession) {
-      return const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(key: Key('sessionLoadingIndicator')),
-        ),
-      );
+    if (_loggedIn == null) {
+      return const Material(child: Center(child: CircularProgressIndicator()));
     }
-
-    if (_sessionError != null) {
-      return Scaffold(
-        body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('Không thể kiểm tra trạng thái đăng nhập.'),
-              const SizedBox(height: 12),
-              FilledButton(
-                key: const Key('retrySessionButton'),
-                onPressed: _checkSession,
-                child: const Text('Thử lại'),
-              ),
-            ],
+    if (_error != null) {
+      return Material(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(
+              'Firebase Authentication lỗi: $_error',
+              textAlign: TextAlign.center,
+            ),
           ),
         ),
       );
     }
-
-    if (_isLoggedIn) {
+    if (_loggedIn!) {
       return DashboardPage(
         authRepository: widget.authRepository,
-        studentRepository: widget.studentRepository,
-        onLoggedOut: _handleLogout,
+        productRepository: widget.productRepository,
+        storage: widget.storage,
+        onLogout: () => setState(() => _loggedIn = false),
       );
     }
-
     return LoginPage(
       authRepository: widget.authRepository,
-      onLoginSuccess: _handleLoginSuccess,
+      onSuccess: () => setState(() => _loggedIn = true),
     );
   }
 }

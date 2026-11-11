@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "741573070947",
+    "project_id": "giua-ky-dnt",
+    "storage_bucket": "giua-ky-dnt.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:741573070947:android:0ecff41f24186a854aa856",
+        "android_client_info": {
+          "package_name": "com.example.giua_ky"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDpAtA96P1Yzbx7MGzxh7oVRvR3SC7opcU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
